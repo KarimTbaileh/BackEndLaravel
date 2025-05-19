@@ -2,22 +2,30 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Application extends Model
-{
+{ use HasFactory;
     protected $fillable = [
         'Cv',
-        'Applicant Name',
         'Cover Letter',
         'Status',
         'position applied',
-        'jobb_id'
+        'jobb_id',
+        'job_seeker_id'
 
     ];
+
+
 
     public function jobb(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Jobb::class, 'jobb_id');
+    }
+
+    public function jobSeeker(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(JobSeeker::class, 'job_seeker_id');
     }
 }
