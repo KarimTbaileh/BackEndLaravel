@@ -17,12 +17,15 @@ return new class extends Migration
             $table->String("Location");
             $table->String("Job Type");
             $table->String("Title");
-            $table->String("Description");
+            $table->longText("Description");
             $table->String("Status");
             $table->String("Type");
             $table->integer("Salary");
             $table->String("Frequency");
             $table->String("Currency");
+            $table->foreignId('employeer_id')
+                ->constrained('employeers')
+                ->onDelete('cascade');
 
             $table->timestamps();
         });

@@ -15,12 +15,13 @@ return new class extends Migration
             $table->id();
             $table->timestamps();
             $table->String("Cv");
-            $table->String("Applicant Name");
-            $table->String("Cover Letter");
+            $table->longText("Cover Letter");
             $table->String("Status");
             $table->String("position applied");
             $table->unsignedBigInteger('jobb_id');
-            $table->foreign('jobb_id')->references('id')->on('jobb')->onDelete('cascade');
+            $table->foreign('jobb_id')->references('id')->on('jobbs')->onDelete('cascade');
+            $table->unsignedBigInteger('job_seeker_id');
+            $table->foreign('job_seeker_id')->references('id')->on('job_seekers')->onDelete('cascade');
         });
     }
 
@@ -30,5 +31,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('applications');
+        Schema::table('applications', function (Blueprint $table) {
+            $table->dropForeign(['job_seeker_id']);
+            $table->dropColumn('job_seeker_id');
+        });
     }
 };
