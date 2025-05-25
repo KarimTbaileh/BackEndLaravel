@@ -1,15 +1,18 @@
 <?php
-
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\EmployeerController;
 use App\Http\Controllers\JobbController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CompanyController;
+
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+Route::apiResource('companies', CompanyController::class);
 
 Route::apiResource('employeers', EmployeerController::class);
 Route::get('employeers/search/{name}', [EmployeerController::class, 'search']);

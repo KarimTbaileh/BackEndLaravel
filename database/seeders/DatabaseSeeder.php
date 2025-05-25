@@ -32,5 +32,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             JobSeekerSeeder::class,
         ]);
+        $this->call([
+            CompanySeeder::class
+        ]);
+
     }
 }
