@@ -5,12 +5,24 @@ namespace App\Http\Controllers;
 use App\Models\Jobb;
 use Illuminate\Http\Request;
 
+/**
+ * @method middleware(string $string)
+ */
 class JobbController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum');
+
+        $this->middleware('abilities:admin')->only(['approveJob','closeApplication','update','destroy','store','postJob','jobsByEmployer']);
+
+        $this->middleware('abilities:employeer')->only(['closeApplication','update','destroy','store','postJob','jobsByEmployer']);;
+    }
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(): \Illuminate\Pagination\LengthAwarePaginator
     {
         return Jobb::with('employeer')->paginate(10);
     }
@@ -18,7 +30,7 @@ class JobbController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'Requirements' => 'required|string',
@@ -30,7 +42,8 @@ class JobbController extends Controller
             'Type' => 'required|string',
             'Title' => 'required|string',
             'Description' => 'required|string',
-            'Status' => 'required|string',
+            'Status' => 'required|in:open,closed',
+            'publication_status' => 'required|in:pending,approved,rejected',
             'employeer_id' => 'required|exists:employeers,id',
         ]);
 
@@ -49,7 +62,7 @@ class JobbController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): \Illuminate\Http\JsonResponse
     {
         $job = Jobb::findOrFail($id);
         $validated = $request->validate([
@@ -62,7 +75,8 @@ class JobbController extends Controller
             'Type' => 'sometimes|string',
             'Title' => 'sometimes|string',
             'Description' => 'sometimes|string',
-            'Status' => 'sometimes|string',
+            'Status' => 'sometimes|in:open,closed',
+            'publication_status' => 'sometimes|in:pending,approved,rejected',
             'employeer_id' => 'sometimes|exists:employeers,id',
         ]);
         $job->update($validated);
@@ -72,7 +86,7 @@ class JobbController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy($id): \Illuminate\Http\JsonResponse
     {
         Jobb::findOrFail($id)->delete();
         return response()->json(null, 204);
@@ -85,7 +99,7 @@ class JobbController extends Controller
         })->with('employeer')->get();
     }
 
-    public function postJob(Request $request)
+    public function postJob(Request $request): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'Requirements' => 'required|string',
@@ -97,7 +111,8 @@ class JobbController extends Controller
             'Type' => 'required|string',
             'Title' => 'required|string',
             'Description' => 'required|string',
-            'Status' => 'required|string',
+            'Status' => 'required|in:open,closed',
+            'publication_status' => 'required|in:pending,approved,rejected',
             'employeer_id' => 'required|exists:employeers,id',
         ]);
 
@@ -111,4 +126,33 @@ class JobbController extends Controller
         return response()->json($jobs);
     }
 
+    /**
+     * Approve or reject a job publication by Admin.
+     */
+    public function approveJob(Request $request, $id): \Illuminate\Http\JsonResponse
+    {
+        $job = Jobb::findOrFail($id);
+        $validated = $request->validate([
+            'publication_status' => 'required|in:approved,rejected',
+        ]);
+
+        $job->update(['publication_status' => $validated['publication_status']]);
+        return response()->json(['message' => 'Job publication status updated', 'job' => $job]);
+    }
+
+    /**
+     * Close application for a job by Employeer.
+     */
+    public function closeApplication($id): \Illuminate\Http\JsonResponse
+    {
+        $job = Jobb::findOrFail($id);
+        $user = auth()->user();
+
+        if ($job->employeer_id !== $user->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $job->update(['Status' => 'closed']);
+        return response()->json(['message' => 'Application closed', 'job' => $job]);
+    }
 }
