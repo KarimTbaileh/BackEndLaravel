@@ -6,34 +6,27 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('jobbs', function (Blueprint $table) {
             $table->id();
-            $table->String("Requirements");
-            $table->String("Location");
-            $table->String("Job Type");
-            $table->String("Title");
-            $table->longText("Description");
-            $table->String("Status");
-            $table->String("Type");
-            $table->integer("Salary");
-            $table->String("Frequency");
-            $table->String("Currency");
-            $table->foreignId('employeer_id')
-                ->constrained('employeers')
-                ->onDelete('cascade');
-
+            $table->string('Requirements');
+            $table->string('Location');
+            $table->string('Job Type');
+            $table->string('Title');
+            $table->longText('Description');
+            $table->enum('publication_status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->string('Type');
+            $table->integer('Salary');
+            $table->string('Frequency');
+            $table->string('Currency');
+            $table->enum('Status', ['open', 'closed'])->default('open');
+            $table->unsignedBigInteger('employeer_id');
+            $table->foreign('employeer_id')->references('id')->on('employeers')->onDelete('cascade');
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('jobbs');

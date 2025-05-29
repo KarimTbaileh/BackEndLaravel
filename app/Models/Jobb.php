@@ -5,6 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @method static findOrFail($id)
+ * @method static whereHas(string $string, \Closure $param)
+ * @method static where(string $string, $employeerId)
+ */
 class Jobb extends Model
 {  use HasFactory;
     protected $fillable = [
@@ -18,6 +23,7 @@ class Jobb extends Model
         'Title',
         'Description',
         'Status',
+        'publication_status',
         'employeer_id',
 
     ];

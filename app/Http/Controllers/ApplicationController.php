@@ -5,89 +5,111 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use Illuminate\Http\Request;
 
+/**
+ * @method static \Illuminate\Routing\Router middleware(string $middleware)
+ */
 class ApplicationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct()
     {
-        return Application::with('jobb')->paginate(10);
+        $this->middleware('auth:sanctum');
+
+        $this->middleware('abilities:admin')->only(['show', 'update', 'destroy']);
+
+        $this->middleware('abilities:employeer')->only(['applicantsByJob', 'accept', 'reject']);
+
+        $this->middleware('abilities:job_seeker')->only(['store','index']);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function index()
     {
+        $user = auth()->user();
+
+        if ($user->role === 'job_seeker') {
+            return Application::where('job_seeker_id', $user->id)
+                ->with(['jobb', 'jobSeeker'])
+                ->paginate(10);
+        }
+
+        return Application::with(['jobb', 'jobSeeker'])->paginate(10);
+    }
+
+    public function store(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $user = auth()->user();
+
         $validated = $request->validate([
-            'position_applied' => 'required|string',
-            'cv' => 'required|string',
-            'cover_letter' => 'required|string',
-            'status' => 'required|string',
+            'position applied' => 'required|string',
+            'Cv' => 'required|string',
+            'Cover Letter' => 'required|string',
+            'Status' => 'required|string',
             'jobb_id' => 'required|exists:jobbs,id',
-            'job_seeker_id' => 'required|exists:job_seekers,id',
         ]);
 
-        $application = Application::create($validated);
+        $application = Application::create([
+            'position applied' => $validated['position applied'],
+            'Cv' => $validated['Cv'],
+            'Cover Letter' => $validated['Cover Letter'],
+            'Status' => $validated['Status'],
+            'jobb_id' => $validated['jobb_id'],
+            'job_seeker_id' => $user->id,
+        ]);
+
         return response()->json($application, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show($id)
     {
-        return Application::with('jobb')->findOrFail($id);
+        return Application::with(['jobb', 'jobSeeker'])->findOrFail($id);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): \Illuminate\Http\JsonResponse
     {
         $application = Application::findOrFail($id);
         $validated = $request->validate([
-
-            'position_applied' => 'sometimes|string',
-            'cv' => 'sometimes|string',
-            'cover_letter' => 'sometimes|string',
-            'status' => 'sometimes|string',
+            'position applied' => 'sometimes|string',
+            'Cv' => 'sometimes|string',
+            'Cover Letter' => 'sometimes|string',
+            'Status' => 'sometimes|string',
             'jobb_id' => 'sometimes|exists:jobbs,id',
-            'job_seeker_id' => 'required|exists:job_seekers,id',
         ]);
+
         $application->update($validated);
         return response()->json($application);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id)
+    public function destroy($id): \Illuminate\Http\JsonResponse
     {
         Application::findOrFail($id)->delete();
         return response()->json(null, 204);
     }
 
-    public function accept($id)
+    public function accept($id): \Illuminate\Http\JsonResponse
     {
         $application = Application::findOrFail($id);
-        $application->update(['status' => 'Accepted']);
+        $application->update(['Status' => 'Accepted']);
         return response()->json($application);
     }
 
-    public function reject($id)
+    public function reject($id): \Illuminate\Http\JsonResponse
     {
         $application = Application::findOrFail($id);
-        $application->update(['status' => 'Rejected']);
+        $application->update(['Status' => 'Rejected']);
         return response()->json($application);
     }
 
-    public function applicantsByJob($jobbId)
+    public function applicantsByJob($jobbId): \Illuminate\Http\JsonResponse
     {
+        $user = auth()->user();
+
+
         $applications = Application::where('jobb_id', $jobbId)
+            ->whereHas('jobb', function ($query) use ($user) {
+                $query->where('employeer_id', $user->id);
+            })
             ->with(['jobSeeker', 'jobb'])
             ->paginate(10);
+
         return response()->json($applications);
     }
 }
