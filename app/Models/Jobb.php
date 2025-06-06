@@ -8,11 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * @method static findOrFail($id)
  * @method static whereHas(string $string, \Closure $param)
-<<<<<<< HEAD
- * @method static where(string $string, $employeerId)
-=======
  * @method static where(string $string, $employerId)
->>>>>>> wasseemQ
  */
 class Jobb extends Model
 {  use HasFactory;
@@ -31,15 +27,9 @@ class Jobb extends Model
         'employeer_id',
 
     ];
-<<<<<<< HEAD
-    public function employeer(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(Employeer::class);
-=======
     public function employer(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Employer::class);
->>>>>>> wasseemQ
     }
 
 
