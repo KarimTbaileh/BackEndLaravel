@@ -4,19 +4,23 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 class CheckAbilities
 {
-    public function handle(Request $request, Closure $next, $ability): Response
+    public function handle(Request $request, Closure $next, ...$abilities)
     {
         $user = $request->user();
 
-
-        if (!$user || !$user->tokenCan($ability)) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        return $next($request);
+        foreach ($abilities as $ability) {
+            if ($user->tokenCan($ability)) {
+                return $next($request);
+            }
+        }
+
+        return response()->json(['message' => 'Forbidden - missing required ability'], 403);
     }
 }

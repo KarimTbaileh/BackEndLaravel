@@ -21,7 +21,7 @@ return new class extends Migration
             $table->unsignedBigInteger('jobb_id');
             $table->foreign('jobb_id')->references('id')->on('jobbs')->onDelete('cascade');
             $table->unsignedBigInteger('job_seeker_id');
-            $table->foreign('job_seeker_id')->references('id')->on('job_seekers')->onDelete('cascade');
+            $table->foreign('job_seeker_id')->references('id')->on('job_seeker')->onDelete('cascade');
         });
     }
 

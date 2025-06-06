@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('Currency');
             $table->enum('Status', ['open', 'closed'])->default('open');
             $table->unsignedBigInteger('employeer_id');
-            $table->foreign('employeer_id')->references('id')->on('employeers')->onDelete('cascade');
+            $table->foreign('employeer_id')->references('id')->on('employeer')->onDelete('cascade');
             $table->timestamps();
         });
     }
