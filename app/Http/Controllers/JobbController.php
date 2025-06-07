@@ -4,38 +4,34 @@ namespace App\Http\Controllers;
 
 use App\Models\Jobb;
 use Illuminate\Http\Request;
-
-/**
- * @method middleware(string $string)
- */
+use Illuminate\Support\Facades\Log;
 class JobbController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth:sanctum');
 
-        $this->middleware('abilities:admin')->only(['approveJob','closeApplication','update','destroy','store','postJob','jobsByEmployer']);
+        $this->middleware('abilities:admin')->only(['approveJob']);
+        $this->middleware('abilities:employer')->only(['postJob','closeApplication','openApplication']);;
 
-        $this->middleware('abilities:employeer')->only(['closeApplication','update','destroy','store','postJob','jobsByEmployer']);;
+        $this->middleware('abilitiesAny:admin,employer')->only(['jobsByEmployer', 'update', 'destroy']);
     }
 
-    /**
-     * Display a listing of the resource.
-     */
     public function index(): \Illuminate\Pagination\LengthAwarePaginator
     {
-        return Jobb::with('employeer')->paginate(10);
+        return Jobb::where('publication_status', 'approved')
+            ->with('employer')
+            ->paginate(10);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request): \Illuminate\Http\JsonResponse
+    public function postJob(Request $request): \Illuminate\Http\JsonResponse
     {
+        $user = auth()->user();
+
         $validated = $request->validate([
             'Requirements' => 'required|string',
             'Location' => 'required|string',
-            'Job Type' => 'required|string',
+            'job_type' => 'required|string',
             'Currency' => 'required|string',
             'Frequency' => 'required|string',
             'Salary' => 'required|numeric',
@@ -44,31 +40,51 @@ class JobbController extends Controller
             'Description' => 'required|string',
             'Status' => 'required|in:open,closed',
             'publication_status' => 'required|in:pending,approved,rejected',
-            'employeer_id' => 'required|exists:employeers,id',
+            'employer_id' => 'required|exists:employers,id',
+            'logo' => 'required|url',
+            'document' => 'nullable|url',
         ]);
 
-        $job = Jobb::create($validated);
-        return response()->json($job, 201);
+        if ($user->role !== 'admin' && $validated['employer_id'] != $user->employer->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+
+
+        try {
+            $job = Jobb::create($validated);
+            return response()->json($job, 201);
+        } catch (\Exception $e) {
+            Log::error('Job creation failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to create job',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show($id)
     {
-        return Jobb::with('employeer')->findOrFail($id);
+        $job = Jobb::with('employer')->findOrFail($id);
+        if ($job->publication_status !== 'approved') {
+            return response()->json(['error' => 'Job not available'], 403);
+        }
+        return $job;
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, $id): \Illuminate\Http\JsonResponse
     {
         $job = Jobb::findOrFail($id);
+        $user = auth()->user();
+
+        if ($user->role !== 'admin' && $job->employer_id !== $user->employer->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         $validated = $request->validate([
             'Requirements' => 'sometimes|string',
             'Location' => 'sometimes|string',
-            'Job Type' => 'sometimes|string',
+            'job_type' => 'sometimes|string',
             'Currency' => 'sometimes|string',
             'Frequency' => 'sometimes|string',
             'Salary' => 'sometimes|numeric',
@@ -77,58 +93,48 @@ class JobbController extends Controller
             'Description' => 'sometimes|string',
             'Status' => 'sometimes|in:open,closed',
             'publication_status' => 'sometimes|in:pending,approved,rejected',
-            'employeer_id' => 'sometimes|exists:employeers,id',
+            'employer_id' => 'sometimes|exists:employers,id',
+            'logo' => 'sometimes|url',
+            'document' => 'nullable|url',
         ]);
+
         $job->update($validated);
         return response()->json($job);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($id): \Illuminate\Http\JsonResponse
     {
-        Jobb::findOrFail($id)->delete();
+        $job = Jobb::findOrFail($id);
+        $user = auth()->user();
+
+        if ($user->role !== 'admin' && $job->employer_id !== $user->employer->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $job->delete();
         return response()->json(null, 204);
     }
 
     public function search($name)
     {
-        return Jobb::whereHas('employeer', function ($query) use ($name) {
-            $query->where('name', 'like', "%$name%");
-        })->with('employeer')->get();
+        return Jobb::where('publication_status', 'approved')
+            ->where('Title', 'like', "%$name%")
+            ->with('employer')
+            ->get();
     }
 
-    public function postJob(Request $request): \Illuminate\Http\JsonResponse
+    public function jobsByEmployer($employerId): \Illuminate\Http\JsonResponse
     {
-        $validated = $request->validate([
-            'Requirements' => 'required|string',
-            'Location' => 'required|string',
-            'Job Type' => 'required|string',
-            'Currency' => 'required|string',
-            'Frequency' => 'required|string',
-            'Salary' => 'required|numeric',
-            'Type' => 'required|string',
-            'Title' => 'required|string',
-            'Description' => 'required|string',
-            'Status' => 'required|in:open,closed',
-            'publication_status' => 'required|in:pending,approved,rejected',
-            'employeer_id' => 'required|exists:employeers,id',
-        ]);
+        $user = auth()->user();
 
-        $job = Jobb::create($validated);
-        return response()->json($job, 201);
-    }
+        if ($user->role !== 'admin' && $employerId != $user->employer->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
 
-    public function jobsByEmployer($employeerId): \Illuminate\Http\JsonResponse
-    {
-        $jobs = Jobb::where('employeer_id', $employeerId)->with('employeer')->paginate(10);
+        $jobs = Jobb::where('employer_id', $employerId)->with('employer')->paginate(10);
         return response()->json($jobs);
     }
 
-    /**
-     * Approve or reject a job publication by Admin.
-     */
     public function approveJob(Request $request, $id): \Illuminate\Http\JsonResponse
     {
         $job = Jobb::findOrFail($id);
@@ -140,19 +146,32 @@ class JobbController extends Controller
         return response()->json(['message' => 'Job publication status updated', 'job' => $job]);
     }
 
-    /**
-     * Close application for a job by Employeer.
-     */
     public function closeApplication($id): \Illuminate\Http\JsonResponse
     {
         $job = Jobb::findOrFail($id);
         $user = auth()->user();
 
-        if ($job->employeer_id !== $user->id) {
+        if ($job->employer_id !== $user->employer->id && $user->role !== 'admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $job->update(['Status' => 'closed']);
         return response()->json(['message' => 'Application closed', 'job' => $job]);
     }
+
+
+
+    public function openApplication($id): \Illuminate\Http\JsonResponse
+    {
+        $job = Jobb::findOrFail($id);
+        $user = auth()->user();
+
+        if ($job->employer_id !== $user->employer->id && $user->role !== 'admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $job->update(['Status' => 'open']);
+        return response()->json(['message' => 'Application opened', 'job' => $job]);
+    }
+
 }

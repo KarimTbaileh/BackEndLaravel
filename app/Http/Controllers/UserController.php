@@ -137,8 +137,8 @@ public function __construct()
     }
 
      /** Display a listing of the users.
-     * @return \Illuminate\Http\Response
-     */
+     * @return \Illuminate\Http\JsonResponse
+      */
 
 
         public function index()
@@ -154,8 +154,8 @@ public function __construct()
      /** Store a newly created user in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-    */
+     * @return \Illuminate\Http\JsonResponse
+      */
 
 
     public function store(StoreUserRequest $request)
@@ -170,8 +170,8 @@ public function __construct()
 
      /** Update any field in specified user.
      * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
+     * @return \Illuminate\Http\JsonResponse
+      */
 
     public function update($id, UpdateUserRequest $request)
     {
@@ -187,8 +187,8 @@ public function __construct()
 
      /** Get specified users by id.
      * @param  int  $id
-     * @return \Illuminate\Http\Response
-     * */
+     * @return \Illuminate\Http\JsonResponse
+      * */
 
     public function show($id)
     {
@@ -202,8 +202,8 @@ public function __construct()
 
      /** Delete the specified user.
      * @param  int  $id
-     * @return \Illuminate\Http\Response
-     * */
+     * @return \Illuminate\Http\JsonResponse
+      * */
 
 
     public function destroy($id)

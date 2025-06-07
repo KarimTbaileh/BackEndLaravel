@@ -5,17 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * @method static findOrFail($id)
- * @method static whereHas(string $string, \Closure $param)
- * @method static where(string $string, $employerId)
- */
 class Jobb extends Model
-{  use HasFactory;
+{
+    use HasFactory;
+
     protected $fillable = [
         'Requirements',
         'Location',
-        'Job Type',
+        'job_type',
         'Currency',
         'Frequency',
         'Salary',
@@ -24,14 +21,21 @@ class Jobb extends Model
         'Description',
         'Status',
         'publication_status',
-        'employeer_id',
-
+        'employer_id', // تعديل من employeer_id إلى employer_id
+        'logo',
+        'document',
     ];
+
+    protected $casts = [
+        'Salary' => 'integer',
+        'publication_status' => 'string',
+        'Status' => 'string',
+    ];
+
     public function employer(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->belongsTo(Employer::class);
+        return $this->belongsTo(Employer::class, 'employer_id'); // تعديل من employeer_id إلى employer_id
     }
-
 
     public function applications(): \Illuminate\Database\Eloquent\Relations\HasMany
     {

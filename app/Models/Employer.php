@@ -9,7 +9,7 @@ class Employer extends Model
 {
     use HasFactory;
 
-    protected $table = 'employeer';
+    protected $table = 'employers'; // تعديل الاسم
     protected $fillable = [
         'language',
         'job_title',
@@ -21,8 +21,8 @@ class Employer extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function jobbs()
+    public function jobbs(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->hasMany(Jobb::class, 'employeer_id');
+        return $this->hasMany(Jobb::class, 'employer_id'); // تعديل employeer_id إلى employer_id
     }
 }
