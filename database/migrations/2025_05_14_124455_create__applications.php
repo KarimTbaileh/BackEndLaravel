@@ -14,14 +14,14 @@ return new class extends Migration
         Schema::create('applications', function (Blueprint $table) {
             $table->id();
             $table->timestamps();
-            $table->String("Cv");
-            $table->longText("Cover Letter");
-            $table->String("Status");
-            $table->String("position applied");
+            $table->enum('Status', ['pending', 'Accepted', 'Rejected'])->default('pending');
+            $table->string('position applied');
             $table->unsignedBigInteger('jobb_id');
             $table->foreign('jobb_id')->references('id')->on('jobbs')->onDelete('cascade');
             $table->unsignedBigInteger('job_seeker_id');
-            $table->foreign('job_seeker_id')->references('id')->on('job_seeker')->onDelete('cascade');
+            // تم الإبقاء على job_seekers لأننا قمنا بتغيير اسم الجدول في ملف JobSeeker.php
+            $table->foreign('job_seeker_id')->references('id')->on('job_seekers')->onDelete('cascade');
+            $table->index(['jobb_id', 'job_seeker_id']);
         });
     }
 
@@ -31,9 +31,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('applications');
-        Schema::table('applications', function (Blueprint $table) {
-            $table->dropForeign(['job_seeker_id']);
-            $table->dropColumn('job_seeker_id');
-        });
     }
 };

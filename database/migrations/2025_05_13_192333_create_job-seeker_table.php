@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('job_seeker', function (Blueprint $table) {
+        // تغيير اسم الجدول من job_seeker إلى job_seekers ليتوافق مع ملف الهجرة create__applications.php
+        Schema::create('job_seekers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('country');
@@ -28,6 +29,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        // إضافة كود لحذف الجدول
+        Schema::dropIfExists('job_seekers');
     }
 };

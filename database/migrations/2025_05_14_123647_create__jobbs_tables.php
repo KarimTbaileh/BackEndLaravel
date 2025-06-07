@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('Requirements');
             $table->string('Location');
-            $table->string('Job Type');
+            $table->string('job_type');
             $table->string('Title');
             $table->longText('Description');
             $table->enum('publication_status', ['pending', 'approved', 'rejected'])->default('pending');
@@ -21,9 +21,11 @@ return new class extends Migration
             $table->string('Frequency');
             $table->string('Currency');
             $table->enum('Status', ['open', 'closed'])->default('open');
-            $table->unsignedBigInteger('employeer_id');
-            $table->foreign('employeer_id')->references('id')->on('employeer')->onDelete('cascade');
+            $table->unsignedBigInteger('employer_id'); // تعديل من employeer_id إلى employer_id
+            $table->foreign('employer_id')->references('id')->on('employers')->onDelete('cascade'); // تعديل الجدول إلى employers
             $table->timestamps();
+            $table->string('logo');
+            $table->string('document')->nullable();
         });
     }
 

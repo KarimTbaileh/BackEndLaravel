@@ -1,7 +1,10 @@
 <?php
+
+use App\Http\Controllers\ApplicationController;
+use App\Http\Controllers\EmployerController;
+use App\Http\Controllers\JobbController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\JobSeekerController;
-use App\Http\Controllers\EmployerController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -10,27 +13,13 @@ Route::get('/users', function(Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::middleware(['auth:sanctum', 'abilities:admin'])->group(function () {
-    Route::apiResource('employeers', EmployeerController::class);
-    Route::apiResource('jobbs', JobbController::class)->only(['update', 'destroy', 'store']);
-    Route::post('jobbs/post', [JobbController::class, 'postJob']);
-    Route::get('jobbs/employer/{employeerId}', [JobbController::class, 'jobsByEmployer']);
-    Route::post('jobbs/{id}/approve', [JobbController::class, 'approveJob']);
-    Route::post('jobbs/{id}/close', [JobbController::class, 'closeApplication']);
-    Route::apiResource('applications', ApplicationController::class)->only([ 'show', 'update', 'destroy']);
-});
 
-Route::middleware(['auth:sanctum', 'abilities:employeer'])->group(function () {
+
+Route::middleware(['auth:sanctum', 'abilities:employer'])->group(function () {
     Route::get('applications/job/{jobbId}', [ApplicationController::class, 'applicantsByJob']);
     Route::post('applications/{id}/accept', [ApplicationController::class, 'accept']);
     Route::post('applications/{id}/reject', [ApplicationController::class, 'reject']);
-    Route::apiResource('jobbs', JobbController::class)->only(['update', 'destroy', 'store']);
-    Route::post('jobbs/post', [JobbController::class, 'postJob']);
-    Route::get('jobbs/employer/{employeerId}', [JobbController::class, 'jobsByEmployer']);
-    Route::post('jobbs/{id}/close', [JobbController::class, 'closeApplication']);
-    Route::get('employeers', [EmployeerController::class, 'index']);
-    Route::get('employeers/{id}', [EmployeerController::class, 'show']);
-    Route::get('employeers/search/{name}', [EmployeerController::class, 'search']);
+
 });
 
 Route::middleware(['auth:sanctum', 'abilities:job_seeker'])->group(function () {
@@ -38,10 +27,27 @@ Route::middleware(['auth:sanctum', 'abilities:job_seeker'])->group(function () {
     Route::get('applications', [ApplicationController::class, 'index']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('jobbs', [JobbController::class, 'index']);
-    Route::get('jobbs/{id}', [JobbController::class, 'show']);
-    Route::get('jobbs/search/{name}', [JobbController::class, 'search']);
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/jobs', [JobbController::class, 'index'])->name('jobs.index');
+    Route::get('/jobs/{id}', [JobbController::class, 'show'])->name('jobs.show');
+    Route::get('/jobs/search/{name}', [JobbController::class, 'search'])->name('jobs.search');
+
+    Route::middleware(['auth:sanctum', 'abilitiesAny:admin,employer'])->group(function () {
+        Route::put('/jobs/{id}', [JobbController::class, 'update'])->name('jobs.update');
+        Route::delete('/jobs/{id}', [JobbController::class, 'destroy'])->name('jobs.destroy');
+        Route::get('/jobs/employer/{employerId}', [JobbController::class, 'jobsByEmployer'])->name('jobs.byEmployer');
+    });
+
+    Route::middleware(['auth:sanctum', 'abilities:employer'])->group(function () {
+        Route::post('/jobs', [JobbController::class, 'postJob'])->name('jobs.post');
+        Route::post('/jobs/{id}/close', [JobbController::class, 'closeApplication'])->name('jobs.close');
+        Route::post('/jobs/{id}/open', [JobbController::class, 'openApplication'])->name('jobs.open');
+    });
+
+
+    Route::middleware(['auth:sanctum', 'abilities:admin'])->group(function () {
+        Route::post('/jobs/{id}/approve', [JobbController::class, 'approveJob'])->name('jobs.approve');
+    });
 });
 
 
