@@ -5,89 +5,137 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use Illuminate\Http\Request;
 
+/**
+ * @method static \Illuminate\Routing\ControllerMiddlewareOptions middleware(string $middleware)
+ */
 class ApplicationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct()
     {
-        return Application::with('jobb')->paginate(10);
+        $this->middleware('auth:sanctum');
+
+        $this->middleware('abilities:employer')->only(['applicantsByJob', 'accept', 'reject']);
+
+        $this->middleware('abilities:job_seeker')->only(['store', 'index']);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function index()
     {
+        $user = auth()->user();
+
+        if ($user->role === 'job_seeker') {
+            // التحقق من وجود JobSeeker
+            if (!$user->jobSeeker) {
+                return response()->json(['error' => 'Job seeker profile not found'], 404);
+            }
+
+            return Application::where('job_seeker_id', $user->jobSeeker->id)
+                ->with(['jobb', 'jobSeeker'])
+                ->paginate(10);
+        }
+
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+    public function store(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $user = auth()->user();
+
+        // التحقق من وجود سجل JobSeeker للمستخدم
+        $jobSeeker = $user->jobSeeker;
+        if (!$jobSeeker) {
+            return response()->json(['error' => 'Job seeker profile not found'], 404);
+        }
+
         $validated = $request->validate([
-            'position_applied' => 'required|string',
-            'cv' => 'required|string',
-            'cover_letter' => 'required|string',
-            'status' => 'required|string',
+            'position applied' => 'required|string',
+            'Status' => 'required|in:pending,Accepted,Rejected',
             'jobb_id' => 'required|exists:jobbs,id',
-            'job_seeker_id' => 'required|exists:job_seekers,id',
         ]);
 
-        $application = Application::create($validated);
+        $application = Application::create([
+            'position applied' => $validated['position applied'],
+            'Status' => $validated['Status'],
+            'jobb_id' => $validated['jobb_id'],
+            'job_seeker_id' => $jobSeeker->id, // استخدام معرف JobSeeker
+        ]);
+
         return response()->json($application, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show($id)
-    {
-        return Application::with('jobb')->findOrFail($id);
-    }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id)
-    {
-        $application = Application::findOrFail($id);
-        $validated = $request->validate([
 
-            'position_applied' => 'sometimes|string',
-            'cv' => 'sometimes|string',
-            'cover_letter' => 'sometimes|string',
-            'status' => 'sometimes|string',
-            'jobb_id' => 'sometimes|exists:jobbs,id',
-            'job_seeker_id' => 'required|exists:job_seekers,id',
-        ]);
-        $application->update($validated);
-        return response()->json($application);
-    }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id)
+
+    public function destroy($id): \Illuminate\Http\JsonResponse
     {
         Application::findOrFail($id)->delete();
         return response()->json(null, 204);
     }
 
-    public function accept($id)
+    public function accept($id): \Illuminate\Http\JsonResponse
     {
         $application = Application::findOrFail($id);
-        $application->update(['status' => 'Accepted']);
+        $user = auth()->user();
+
+        // التحقق من وجود علاقة employer للمستخدم
+        if (!$user->employer) {
+            return response()->json(['error' => 'Unauthorized - Employer profile not found'], 403);
+        }
+
+        // التحقق من وجود الوظيفة المرتبطة
+        if (!$application->jobb) {
+            return response()->json(['error' => 'Job not found for this application'], 404);
+        }
+
+        // التحقق من صلاحية الـ Employer
+        if ($application->jobb->employer_id !== $user->employer->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // تحديث حالة الطلب
+        $application->update(['Status' => 'Accepted']);
+
         return response()->json($application);
     }
 
-    public function reject($id)
+    public function reject($id): \Illuminate\Http\JsonResponse
     {
         $application = Application::findOrFail($id);
-        $application->update(['status' => 'Rejected']);
+        $user = auth()->user();
+
+        // التحقق من وجود علاقة employer للمستخدم
+        if (!$user->employer) {
+            return response()->json(['error' => 'Unauthorized - Employer profile not found'], 403);
+        }
+
+        if ($application->jobb->employer_id !== $user->employer->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $application->update(['Status' => 'Rejected']);
         return response()->json($application);
     }
 
-    public function applicantsByJob($jobbId)
+    public function applicantsByJob($jobbId): \Illuminate\Http\JsonResponse
     {
+        $user = auth()->user();
+
+        // التحقق من وجود علاقة employer للمستخدم
+        if (!$user->employer) {
+            return response()->json(['error' => 'Unauthorized - Employer profile not found'], 403);
+        }
+
         $applications = Application::where('jobb_id', $jobbId)
+            ->whereHas('jobb', function ($query) use ($user) {
+                $query->where('employer_id', $user->employer->id);
+            })
             ->with(['jobSeeker', 'jobb'])
             ->paginate(10);
+
+        if ($applications->isEmpty()) {
+            return response()->json(['message' => 'No applications found for this job'], 404);
+        }
         return response()->json($applications);
     }
 }

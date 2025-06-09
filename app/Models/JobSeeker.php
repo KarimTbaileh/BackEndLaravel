@@ -9,15 +9,21 @@ class JobSeeker extends Model
 {
     use HasFactory;
 
+    // تغيير اسم الجدول ليتوافق مع ملف الهجرة create__applications.php
+    protected $table = 'job_seekers';
     protected $fillable = [
-        'name',
-        'birthdate',
-        'email',
-        'phone',
-        'address',
-        'education',
-        'experience',
+        'country',
+        'gender',
+        'day',
+        'month',
+        'year',
+        'user_id',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function applications(): \Illuminate\Database\Eloquent\Relations\HasMany
     {

@@ -2,17 +2,12 @@
 
 namespace Database\Seeders;
 
-use App\Models\JobSeeker;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use App\Models\User;
 
 class JobSeekerSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
-    {
-        JobSeeker::factory()->count(10)->create();
-    }
+
 }

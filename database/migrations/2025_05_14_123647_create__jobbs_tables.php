@@ -6,34 +6,29 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('jobbs', function (Blueprint $table) {
             $table->id();
-            $table->String("Requirements");
-            $table->String("Location");
-            $table->String("Job Type");
-            $table->String("Title");
-            $table->longText("Description");
-            $table->String("Status");
-            $table->String("Type");
-            $table->integer("Salary");
-            $table->String("Frequency");
-            $table->String("Currency");
-            $table->foreignId('employeer_id')
-                ->constrained('employeers')
-                ->onDelete('cascade');
-
+            $table->string('Requirements');
+            $table->string('Location');
+            $table->string('job_type');
+            $table->string('Title');
+            $table->longText('Description');
+            $table->enum('publication_status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->string('Type');
+            $table->integer('Salary');
+            $table->string('Frequency');
+            $table->string('Currency');
+            $table->enum('Status', ['open', 'closed'])->default('open');
+            $table->unsignedBigInteger('employer_id'); // تعديل من employeer_id إلى employer_id
+            $table->foreign('employer_id')->references('id')->on('employers')->onDelete('cascade'); // تعديل الجدول إلى employers
             $table->timestamps();
+            $table->string('logo');
+            $table->string('document')->nullable();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('jobbs');
