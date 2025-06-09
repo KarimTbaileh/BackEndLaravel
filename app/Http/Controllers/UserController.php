@@ -13,6 +13,14 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Response;
+use App\Mail\WelcomeMail;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Support\Facades\URL;
+use Carbon\Carbon;
+use App\Mail\VerifyEmail;
+
+
 
 class UserController extends Controller
 {
@@ -41,7 +49,7 @@ public function __construct()
         'language' => 'required_if:role,employer|string|max:255',
         'job_title' => 'required_if:role,employer|string|max:255',
 
-        'name' => 'required_if:role,admin|string|max:255', // optional for all roles
+        'name' => 'required_if:role,admin|string|max:255',
     ]);
 
     DB::beginTransaction();
@@ -78,10 +86,21 @@ public function __construct()
     }
         DB::commit();
 
-        return response()->json([
-            'message' => 'User registration successful',
-            'user' => $user
-        ], 201);
+    event(new Registered($user));
+
+    $verificationUrl = URL::temporarySignedRoute(
+        'verification.verify',
+         Carbon::now()->addMinutes(60),
+         ['id' => $user->id, 'hash' => sha1($user->email)]
+    );
+
+    Mail::to($user->email)->send(new VerifyEmail($user, $verificationUrl));
+
+    return response()->json([
+      'message1' => 'User registration successful',
+      'message2' => 'Please check your email to verify your account.',
+      'user' => $user
+    ], 201);
 
     } catch (\Exception $e) {
         DB::rollBack();
@@ -90,7 +109,7 @@ public function __construct()
             'message' => $e->getMessage()
         ], 500);
     }
-}
+    }
 
     public function login(Request $request)
     {
@@ -99,33 +118,42 @@ public function __construct()
             'password' => 'required|string',
             'role' => 'required|in:employer,job_seeker,admin',
         ]);
-        if(!Auth::attempt($request->only('email','password'))){
-        return response()->json([
-            'message' => 'Invalid email or password',
-        ], 401);}
+        if (!Auth::attempt($request->only('email','password'))) {
+    return response()->json([
+        'message' => 'Invalid email or password',
+    ], 401);
+}
 
-        $user=User::where('email', $request->email)->firstOrFail();
-        if ($user->role !== $request->role) {
-        return response()->json([
-            'message' => 'You are not authorized to login as ' . $request->role,
-        ], 403);
-    }
-        $abilities = [];
+    $user = User::where('email', $request->email)->firstOrFail();
 
-    if ($user->role === 'admin') {
-        $abilities = ['admin'];
-    } elseif ($user->role === 'employer') {
-        $abilities = ['employer'];
-    } elseif ($user->role === 'job_seeker') {
-        $abilities = ['job_seeker'];
+    if (! $user->hasVerifiedEmail()) {
+     return response()->json([
+        'message' => 'Please verify your email before logging in.',
+     ], 403);
     }
+
+    if ($user->role !== $request->role) {
+     return response()->json([
+        'message' => 'You are not authorized to login as ' . $request->role,
+     ], 403);
+    }
+
+    $abilities = match($user->role) {
+        'admin' => ['admin'],
+        'employer' => ['employer'],
+        'job_seeker' => ['job_seeker'],
+     default => [],
+    };
 
     $token = $user->createToken('auth_token', $abilities)->plainTextToken;
-            return response()->json([
-            'message' => 'User login successful',
-            'user' => $user,
-            'Token' => $token
-        ], 200);
+
+    Mail::to($user->email)->send(new WelcomeMail($user));
+
+    return response()->json([
+        'message' => 'User login successful',
+        'user' => $user,
+        'token' => $token
+    ], 200);
     }
 
         public function logout(Request $request)
