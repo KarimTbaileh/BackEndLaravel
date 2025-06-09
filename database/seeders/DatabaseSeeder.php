@@ -38,5 +38,6 @@ class DatabaseSeeder extends Seeder
             CompanySeeder::class
         ]);
 
+
     }
 }

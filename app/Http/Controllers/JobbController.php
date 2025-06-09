@@ -18,7 +18,7 @@ class JobbController extends Controller
         $this->middleware('abilitiesAny:admin,employer')->only(['jobsByEmployer', 'update', 'destroy']);
     }
 
-    // ✅ صفحة الفلترة (job-search-page)
+    // فلترة وظائف شغل عبد الكريم شافعي 
     public function index(Request $request): \Illuminate\Pagination\LengthAwarePaginator
     {
         $query = Jobb::query()->with('employer');
@@ -46,7 +46,7 @@ class JobbController extends Controller
         return $query->paginate(10);
     }
 
-    // ✅ صفحة Home page (عرض فقط)
+    // عرض وظائف شغل عبد الكريم شافعي
     public function latestJobs()
     {
         return Jobb::with('employer')->latest()->take(10)->get();
