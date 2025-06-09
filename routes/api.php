@@ -8,6 +8,11 @@ use App\Http\Controllers\JobSeekerController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\VerificationController;
+use App\Mail\ResetPasswordMail;
+use App\Models\User;
+use App\Mail\PasswordChangedMail;
+use App\Models\Log;
 
 Route::get('/users', function(Request $request) {
     return $request->user();
@@ -55,6 +60,63 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/register', [UserController::class, 'register']);
     Route::post('/login', [UserController::class, 'login']);
 
+    // routes/api.php
+    Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
+
+    Route::post('/forgot-password', function (Request $request) {
+    $request->validate(['email' => 'required|email']);
+
+    $user = User::where('email', $request->email)->first();
+    if (!$user) {
+        return response()->json(['message' => 'User not found'], 404);
+    }
+
+    $token = Str::random(60);
+
+    DB::table('password_resets')->updateOrInsert(
+        ['email' => $request->email],
+        [
+            'token' => $token,
+            'created_at' => now(),
+        ]
+    );
+
+    $resetLink = url('/reset-password?token=' . $token . '&email=' . urlencode($request->email));
+
+    Mail::to($user->email)->send(new ResetPasswordMail($user, $resetLink));
+
+    return response()->json(['message' => 'Reset password link sent!']);
+});
+
+Route::middleware('auth:sanctum')->post('/change-password', function (Request $request) {
+    $request->validate([
+        'current_password' => ['required'],
+        'new_password' => ['required', 'min:8', 'confirmed'],
+    ]);
+
+    $user = $request->user();
+
+    if (!Hash::check($request->current_password, $user->password)) {
+        return response()->json(['message' => 'Current password is incorrect.'], 400);
+    }
+
+    $user->password = Hash::make($request->new_password);
+    $user->save();
+
+    Log::create([
+        'user_id' => auth()->id(),
+        'action' => 'password_changed',
+        'ip_address' => request()->ip(),
+    ]);
+
+    Mail::to($user->email)->send(new PasswordChangedMail($user));
+    return response()->json([
+        'message' => 'Password changed successfully.',
+        'email' => $user->email,
+    ]);
+});
 
     // ---------- Authenticated but General Access (Just auth:sanctum) ----------
     Route::post('/logout', [UserController::class, 'logout'])->middleware('auth:sanctum');
@@ -114,3 +176,4 @@ Route::middleware(['auth:sanctum', 'abilities:job_seeker'])->group(function () {
     Route::delete('/delete_job_seeker', [JobSeekerController::class, 'destroy']);
     Route::get('/job_seeker', [JobSeekerController::class, 'index']);
 });
+
