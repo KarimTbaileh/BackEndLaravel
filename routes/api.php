@@ -8,6 +8,8 @@ use App\Http\Controllers\JobSeekerController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\SavedJobController;
+
 
 Route::get('/users', function(Request $request) {
     return $request->user();
@@ -113,4 +115,11 @@ Route::middleware(['auth:sanctum', 'abilities:job_seeker'])->group(function () {
     Route::put('/update_job_seeker', [JobSeekerController::class, 'update']);
     Route::delete('/delete_job_seeker', [JobSeekerController::class, 'destroy']);
     Route::get('/job_seeker', [JobSeekerController::class, 'index']);
+});
+
+
+Route::middleware(['auth:sanctum', 'abilities:job_seeker'])->group(function () {
+    Route::get('/saved-jobs', [SavedJobController::class, 'index']);
+    Route::post('/saved-jobs', [SavedJobController::class, 'store']);
+    Route::delete('/saved-jobs/{id}', [SavedJobController::class, 'destroy']);
 });
