@@ -5,23 +5,51 @@ namespace App\Http\Controllers;
 use App\Models\Jobb;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+
 class JobbController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth:sanctum');
+        $this->middleware('auth:sanctum')->except(['index', 'latestJobs']);
 
         $this->middleware('abilities:admin')->only(['approveJob']);
-        $this->middleware('abilities:employer')->only(['postJob','closeApplication','openApplication']);;
+        $this->middleware('abilities:employer')->only(['postJob','closeApplication','openApplication']);
 
         $this->middleware('abilitiesAny:admin,employer')->only(['jobsByEmployer', 'update', 'destroy']);
     }
 
-    public function index(): \Illuminate\Pagination\LengthAwarePaginator
+    // فلترة وظائف شغل عبد الكريم شافعي 
+    public function index(Request $request): \Illuminate\Pagination\LengthAwarePaginator
     {
-        return Jobb::where('publication_status', 'approved')
-            ->with('employer')
-            ->paginate(10);
+        $query = Jobb::query()->with('employer');
+
+        if ($request->filled('location')) {
+            $query->where('Location', 'like', '%' . $request->location . '%');
+        }
+
+        if ($request->filled('job_type')) {
+            $query->where('job_type', $request->job_type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('Status', $request->status); // open / closed
+        }
+
+        if ($request->filled('salary_min')) {
+            $query->where('Salary', '>=', $request->salary_min);
+        }
+
+        if ($request->filled('salary_max')) {
+            $query->where('Salary', '<=', $request->salary_max);
+        }
+
+        return $query->paginate(10);
+    }
+
+    // عرض وظائف شغل عبد الكريم شافعي
+    public function latestJobs()
+    {
+        return Jobb::with('employer')->latest()->take(10)->get();
     }
 
     public function postJob(Request $request): \Illuminate\Http\JsonResponse
@@ -49,8 +77,6 @@ class JobbController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-
-
         try {
             $job = Jobb::create($validated);
             return response()->json($job, 201);
@@ -66,9 +92,6 @@ class JobbController extends Controller
     public function show($id)
     {
         $job = Jobb::with('employer')->findOrFail($id);
-        if ($job->publication_status !== 'approved') {
-            return response()->json(['error' => 'Job not available'], 403);
-        }
         return $job;
     }
 
@@ -117,8 +140,7 @@ class JobbController extends Controller
 
     public function search($name)
     {
-        return Jobb::where('publication_status', 'approved')
-            ->where('Title', 'like', "%$name%")
+        return Jobb::where('Title', 'like', "%$name%")
             ->with('employer')
             ->get();
     }
@@ -159,8 +181,6 @@ class JobbController extends Controller
         return response()->json(['message' => 'Application closed', 'job' => $job]);
     }
 
-
-
     public function openApplication($id): \Illuminate\Http\JsonResponse
     {
         $job = Jobb::findOrFail($id);
@@ -173,5 +193,4 @@ class JobbController extends Controller
         $job->update(['Status' => 'open']);
         return response()->json(['message' => 'Application opened', 'job' => $job]);
     }
-
 }
