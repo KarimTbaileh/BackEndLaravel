@@ -9,6 +9,8 @@ use App\Http\Controllers\JobSeekerController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\SavedJobController;
+
 use App\Http\Controllers\VerificationController;
 use App\Mail\ResetPasswordMail;
 use App\Models\User;
@@ -192,3 +194,8 @@ Route::middleware(['auth:sanctum', 'abilities:job_seeker'])->group(function () {
     Route::get('/job_seeker', [JobSeekerController::class, 'index']);
 });
 
+Route::middleware(['auth:sanctum', 'abilities:job_seeker'])->group(function () {
+    Route::get('/saved-jobs', [SavedJobController::class, 'index']);
+    Route::post('/saved-jobs', [SavedJobController::class, 'store']);
+    Route::delete('/saved-jobs/{id}', [SavedJobController::class, 'destroy']);
+});
